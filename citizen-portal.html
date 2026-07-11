@@ -759,7 +759,6 @@
 
       function saveState() {
         localStorage.setItem(storageKey, JSON.stringify(state));
-        if (!applyingCloudState) pushStateToCloud();
       }
 
       function initCloudSync() {
@@ -767,17 +766,9 @@
         try {
           if (!firebase.apps.length) firebase.initializeApp(firebaseConfig);
           cloudDb = firebase.database();
-          const localStartupData = cloudCollections.reduce((items, name) => {
-            items[name] = [...(state[name] || [])];
-            return items;
-          }, {});
           cloudCollections.forEach((name) => {
             cloudDb.ref(name).on("value", (snapshot) => {
               const items = snapshot.val();
-              if (!items && localStartupData[name]?.length) {
-                cloudDb.ref(name).set(arrayToCloudMap(localStartupData[name]));
-                return;
-              }
               applyingCloudState = true;
               state[name] = cloudMapToArray(items);
               state[name].sort((a, b) => (Number(b.id) || 0) - (Number(a.id) || 0));
@@ -805,6 +796,10 @@
             });
           });
         });
+      }
+
+      function saveLatestAuditLog() {
+        return saveCloudRecord("auditLogs", state.auditLogs[0]);
       }
 
       function saveCloudRecord(name, item) {
@@ -964,6 +959,13 @@
           return sameEmail || samePhone;
         });
         if (duplicate) {
+          if (duplicate.status !== "Approved") {
+            saveCloudRecord("portalRegistrations", duplicate).then((sentOnline) => {
+              if (sentOnline) {
+                registerMessage.textContent = "Existing registration was sent again to the barangay. Status: Pending Verification.";
+              }
+            });
+          }
           registerMessage.textContent = duplicate.status === "Approved"
             ? "This email or mobile number is already approved. Please sign in or use Forgot password."
             : duplicate.status === "Pending Verification"
@@ -1023,6 +1025,8 @@
         addAuditLog("Citizen account registered", fullName(registration), "Citizen Portal", registration.email);
         state.activity = state.activity.slice(0, 5);
         saveState();
+        saveCloudRecord("portalRegistrations", registration);
+        saveLatestAuditLog();
         form.reset();
         age.value = "";
         registerMessage.textContent = "Registration submitted. Status: Pending Verification.";
@@ -1069,6 +1073,8 @@
         user.password = values.password;
         addAuditLog("Citizen password reset", fullName(user), "Citizen Portal", user.email);
         saveState();
+        saveCloudRecord("portalRegistrations", user);
+        saveLatestAuditLog();
         forgotPasswordForm.reset();
         forgotPasswordMessage.textContent = "";
         switchAuth("signin");
@@ -1222,6 +1228,7 @@
         addAuditLog("Document request submitted", fullName(currentUser), "Citizen Portal", `${requestedDocument} · ${formatFee(fee.amount)} · ${values.paymentMethod}`);
         state.activity = state.activity.slice(0, 5);
         saveState();
+        saveLatestAuditLog();
         saveCloudRecord("portalRequests", request).then((sentOnline) => {
           requestMessage.textContent = sentOnline
             ? "Request sent to the barangay. Please wait for approval."

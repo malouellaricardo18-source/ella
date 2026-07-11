@@ -246,21 +246,16 @@ function saveData() {
 }
 
 function initCloudSync() {
-  if (!window.firebase?.initializeApp || !window.firebase?.database) return;
+  if (!window.firebase?.initializeApp || !window.firebase?.database) {
+    syncDataFromCloudRest();
+    return;
+  }
   try {
     if (!firebase.apps.length) firebase.initializeApp(firebaseConfig);
     cloudDb = firebase.database();
-    const localStartupData = cloudCollections.reduce((items, name) => {
-      items[name] = [...(data[name] || [])];
-      return items;
-    }, {});
     cloudCollections.forEach((name) => {
       cloudDb.ref(name).on("value", (snapshot) => {
         const items = snapshot.val();
-        if (!items && localStartupData[name]?.length) {
-          cloudDb.ref(name).set(arrayToCloudMap(localStartupData[name]));
-          return;
-        }
         applyingCloudState = true;
         data[name] = cloudMapToArray(items);
         data[name].sort((a, b) => (Number(b.id) || 0) - (Number(a.id) || 0));
@@ -333,7 +328,7 @@ function syncDataFromCloud() {
     renderAll();
   }).catch((error) => {
     console.warn("Could not refresh Firebase data", error);
-    syncDataFromStorage();
+    syncDataFromCloudRest();
   });
 }
 
