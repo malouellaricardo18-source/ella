@@ -492,25 +492,26 @@
           <fieldset>
             <legend>Account information</legend>
             <div class="form-grid">
-              <label>First name <input name="firstName" required /></label>
+              <label>First name * <input name="firstName" required /></label>
               <label>Middle name <input name="middleName" /></label>
-              <label>Last name <input name="lastName" required /></label>
-              <label>Email address <input name="email" type="email" required /></label>
-              <label>Mobile number <input name="contact" required placeholder="09XX XXX XXXX" /></label>
-              <label>Password <input name="password" type="password" required minlength="6" /></label>
-              <label>Confirm password <input name="confirmPassword" type="password" required minlength="6" /></label>
+              <label>Last name * <input name="lastName" required /></label>
+              <label>Suffix name <input name="suffix" placeholder="Jr., Sr., III, etc." /></label>
+              <label>Email address * <input name="email" type="email" required /></label>
+              <label>Mobile number * <input name="contact" required placeholder="09XX XXX XXXX" /></label>
+              <label>Password * <input name="password" type="password" required minlength="6" /></label>
+              <label>Confirm password * <input name="confirmPassword" type="password" required minlength="6" /></label>
             </div>
           </fieldset>
 
           <fieldset>
             <legend>Personal information</legend>
             <div class="form-grid">
-              <label>Birthdate <input id="birthdate" name="birthdate" type="date" required /></label>
+              <label>Birthdate * <input id="birthdate" name="birthdate" type="date" required /></label>
               <label>Age <input id="age" readonly placeholder="Auto-calculated" /></label>
-              <label>Sex <select name="sex" required><option value="">Select sex</option><option>Female</option><option>Male</option></select></label>
-              <label>Civil status <select name="civilStatus" required><option>Single</option><option>Married</option><option>Widowed</option><option>Separated</option></select></label>
-              <label>Nationality <input name="nationality" value="Filipino" required /></label>
-              <label>Occupation <input name="occupation" required /></label>
+              <label>Sex * <select name="sex" required><option value="">Select sex</option><option>Female</option><option>Male</option></select></label>
+              <label>Civil status * <select name="civilStatus" required><option>Single</option><option>Married</option><option>Widowed</option><option>Separated</option></select></label>
+              <label>Nationality * <input name="nationality" value="Filipino" required /></label>
+              <label>Occupation * <input name="occupation" required /></label>
               <label>Religion <input name="religion" placeholder="Optional" /></label>
             </div>
           </fieldset>
@@ -518,9 +519,7 @@
           <fieldset>
             <legend>Address</legend>
             <div class="form-grid">
-              <label>House no. <input name="houseNo" required /></label>
-              <label>Street <input name="street" required /></label>
-              <label>Purok <input name="purok" required /></label>
+              <label>Purok * <input name="purok" required /></label>
               <label>Barangay <input name="barangay" value="Jurisdiccion" readonly /></label>
               <label>Municipality <input name="municipality" value="Amulung" readonly /></label>
               <label>Province <input name="province" value="Cagayan" readonly /></label>
@@ -528,10 +527,8 @@
           </fieldset>
 
           <fieldset>
-            <legend>Identification</legend>
+            <legend>Voter status</legend>
             <div class="form-grid">
-              <label>Upload valid ID <input name="validId" type="file" accept="image/*,.pdf" required /></label>
-              <label>Selfie with ID <input name="selfieId" type="file" accept="image/*" /></label>
               <label>Voter status <select name="voterStatus"><option>Registered voter</option><option>Not registered</option></select></label>
               <label>Voter ID number <input name="voterId" placeholder="Optional" /></label>
             </div>
@@ -540,9 +537,9 @@
           <fieldset>
             <legend>Family information</legend>
             <div class="form-grid">
-              <label>Household head <input name="householdHead" required /></label>
-              <label>Relationship to household head <input name="relationshipToHead" required /></label>
-              <label>Number of family members <input name="familyMembers" type="number" min="1" value="1" required /></label>
+              <label>Household head * <input name="householdHead" required /></label>
+              <label>Relationship to household head * <input name="relationshipToHead" required /></label>
+              <label>Number of family members * <input name="familyMembers" type="number" min="1" value="1" required /></label>
             </div>
           </fieldset>
 
@@ -555,15 +552,16 @@
               <label><input type="checkbox" name="farmer" /> Farmer</label>
               <label><input type="checkbox" name="fisherfolk" /> Fisherfolk</label>
               <label><input type="checkbox" name="student" /> Student</label>
+              <label><input type="checkbox" name="otherCategory" /> Others</label>
             </div>
           </fieldset>
 
           <fieldset>
             <legend>Emergency contact</legend>
             <div class="form-grid">
-              <label>Contact person <input name="emergencyContact" required /></label>
-              <label>Relationship <input name="emergencyRelationship" required /></label>
-              <label>Contact number <input name="emergencyNumber" required /></label>
+              <label>Contact person * <input name="emergencyContact" required /></label>
+              <label>Relationship * <input name="emergencyRelationship" required /></label>
+              <label>Contact number * <input name="emergencyNumber" required /></label>
             </div>
           </fieldset>
           <p class="message" id="registerMessage"></p>
@@ -791,7 +789,7 @@
       }
 
       function fullName(item) {
-        return `${item.firstName} ${item.middleName ? `${item.middleName} ` : ""}${item.lastName}`.trim();
+        return `${item.firstName} ${item.middleName ? `${item.middleName} ` : ""}${item.lastName}${item.suffix ? ` ${item.suffix}` : ""}`.trim();
       }
 
       function fileToRecord(file) {
@@ -826,24 +824,29 @@
           registerMessage.textContent = "Password and confirm password do not match.";
           return;
         }
-        const duplicate = state.portalRegistrations.some((item) => {
+        const duplicate = state.portalRegistrations.find((item) => {
           const sameEmail = item.email.toLowerCase() === values.email.toLowerCase();
           const samePhone = normalizePhone(item.contact) === normalizePhone(values.contact);
           return sameEmail || samePhone;
         });
         if (duplicate) {
-          registerMessage.textContent = "An account with this email or mobile number already exists.";
+          registerMessage.textContent = duplicate.status === "Approved"
+            ? "This email or mobile number is already approved. Please sign in or use Forgot password."
+            : duplicate.status === "Pending Verification"
+              ? "Registration already submitted. Status: Pending Verification. Please wait for barangay approval."
+              : duplicate.status === "Additional Information Requested"
+                ? "Registration already exists. Status: Additional Information Requested. Please contact the barangay."
+                : "An account with this email or mobile number already exists. Please sign in or use Forgot password.";
           return;
         }
-        const validId = await fileToRecord(form.elements.validId.files[0]);
-        const selfieId = await fileToRecord(form.elements.selfieId.files[0]);
         const categories = [
           ["senior", "Senior Citizen"],
           ["pwd", "Person with Disability (PWD)"],
           ["soloParent", "Solo Parent"],
           ["farmer", "Farmer"],
           ["fisherfolk", "Fisherfolk"],
-          ["student", "Student"]
+          ["student", "Student"],
+          ["otherCategory", "Others"]
         ].filter(([key]) => values[key]).map(([, label]) => label);
         const registration = {
           id: Date.now(),
@@ -852,6 +855,7 @@
           firstName: values.firstName,
           middleName: values.middleName,
           lastName: values.lastName,
+          suffix: values.suffix,
           email: values.email,
           contact: values.contact,
           password: values.password,
@@ -862,15 +866,13 @@
           nationality: values.nationality,
           occupation: values.occupation,
           religion: values.religion,
-          houseNo: values.houseNo,
-          street: values.street,
           purok: values.purok,
           barangay: values.barangay,
           municipality: values.municipality,
           province: values.province,
-          address: `${values.houseNo} ${values.street}, ${values.purok}, ${values.barangay}, ${values.municipality}, ${values.province}`,
-          validId,
-          selfieId,
+          address: `${values.purok}, ${values.barangay}, ${values.municipality}, ${values.province}`,
+          validId: null,
+          selfieId: null,
           voterStatus: values.voterStatus,
           voterId: values.voterId,
           householdHead: values.householdHead,
