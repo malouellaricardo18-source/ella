@@ -256,7 +256,7 @@ function ageFromBirthdate(birthdate) {
 }
 
 function fullName(resident) {
-  return `${resident.firstName} ${resident.lastName}`;
+  return `${resident.firstName} ${resident.lastName}${resident.suffix ? ` ${resident.suffix}` : ""}`;
 }
 
 function setView(id) {
@@ -850,7 +850,7 @@ function renderBroadcasts() {
 }
 
 function registrationFullName(registration) {
-  return `${registration.firstName} ${registration.middleName ? `${registration.middleName} ` : ""}${registration.lastName}`.trim();
+  return `${registration.firstName} ${registration.middleName ? `${registration.middleName} ` : ""}${registration.lastName}${registration.suffix ? ` ${registration.suffix}` : ""}`.trim();
 }
 
 function filePreviewHtml(file) {
@@ -1330,6 +1330,7 @@ function approveRegistration(id) {
       id: Date.now(),
       firstName: registration.firstName,
       lastName: registration.lastName,
+      suffix: registration.suffix,
       birthdate: registration.birthdate,
       civilStatus: registration.civilStatus,
       address: registration.address,
