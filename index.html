@@ -1,0 +1,605 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title> -Jurisdiccion Barangay Data Management</title>
+    <link rel="stylesheet" href="styles.css" />
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+  </head>
+  <body class="locked">
+    <div class="login-screen" id="loginScreen">
+      <form id="entryLoginForm" class="entry-login">
+        <img src="barangay-logo.png" alt="Barangay logo" />
+        <h1>Barangay Data Management</h1>
+        <label>Username <input name="username" autocomplete="username" required /></label>
+        <label>Password <input name="password" type="password" autocomplete="current-password" required /></label>
+        <p class="login-message" id="entryLoginMessage"></p>
+        <button class="button" type="submit">Sign in</button>
+        <a class="link-button" href="citizen-portal.html" target="_blank" rel="noopener">Open Citizen Portal</a>
+      </form>
+    </div>
+    <aside class="sidebar">
+      <div class="brand">
+        <div class="seal">
+          <img src="barangay-logo.png" alt="Barangay logo" />
+          <span>BD</span>
+        </div>
+        <div>
+          <strong>Barangay Jurisdi Data</strong>
+          <small>Management System</small>
+        </div>
+      </div>
+      <nav class="nav" aria-label="Main">
+        <button class="nav-item active" data-view="dashboard" title="Dashboard">⌂ <span>Dashboard</span></button>
+        <button class="nav-item" data-view="residents" title="Residents">☷ <span>Residents</span></button>
+        <button class="nav-item" data-view="households" title="Households">⌘ <span>Households</span></button>
+        <button class="nav-item" data-view="certificates" title="Certificates">□ <span>Certificates</span></button>
+        <button class="nav-item" data-view="blotter" title="Blotter">! <span>Blotter</span></button>
+        <button class="nav-item" data-view="reports" title="Reports">▤ <span>Reports</span></button>
+        <button class="nav-item" data-view="auditLogs" title="Audit Logs"># <span>Audit Logs</span></button>
+        <button class="nav-item" data-view="broadcast" title="Broadcast Alert">! <span>Broadcast Alert</span></button>
+        <button class="nav-item" data-view="portal" title="Portal Admin">+ <span>Portal Admin</span></button>
+        <button class="nav-item" data-view="portalRequests" title="Requests">✓ <span>Requests</span></button>
+      </nav>
+      <div class="sidebar-foot">
+        <span class="status-dot"></span>
+        <span>JURISDICCION</span>
+      </div>
+    </aside>
+
+    <main class="app">
+      <header class="topbar">
+        <div>
+          <p class="eyebrow">Barangay Jurisdiccion Amulung Cagayan</p>
+          <h1 id="pageTitle">Dashboard</h1>
+        </div>
+        <div class="top-actions">
+          <a class="button secondary" href="citizen-portal.html" target="_blank" rel="noopener">Citizen Portal</a>
+          <button class="icon-button" id="printBtn" title="Print current view">⎙</button>
+          <button class="button secondary" id="exportBtn">Export CSV</button>
+          <button class="button secondary" id="loginBtn">Login</button>
+          <button class="button" id="primaryAction">Add resident</button>
+        </div>
+      </header>
+
+      <section class="view active" id="dashboard">
+        <div class="stats-grid">
+          <article class="stat-card">
+            <span>Total residents</span>
+            <strong id="totalResidents">0</strong>
+          </article>
+          <article class="stat-card">
+            <span>Households</span>
+            <strong id="totalHouseholds">0</strong>
+          </article>
+          <article class="stat-card">
+            <span>Senior citizens</span>
+            <strong id="totalSeniors">0</strong>
+          </article>
+          <article class="stat-card">
+            <span>Open blotter cases</span>
+            <strong id="openCases">0</strong>
+          </article>
+        </div>
+
+        <div class="dashboard-grid">
+          <section class="panel">
+            <div class="panel-head">
+              <h2>Population by purok</h2>
+            </div>
+            <div id="purokBars" class="bar-list"></div>
+          </section>
+          <section class="panel">
+            <div class="panel-head">
+              <h2>Recent activity</h2>
+            </div>
+            <div id="activityList" class="activity-list"></div>
+          </section>
+        </div>
+      </section>
+
+      <section class="view" id="residents">
+        <div class="toolbar">
+          <label class="search-box">
+            <span>Search</span>
+            <input id="residentSearch" type="search" placeholder="Name, address, purok, status" />
+          </label>
+          <select id="residentFilter">
+            <option value="all">All residents</option>
+            <option value="voter">Registered voters</option>
+            <option value="senior">Senior citizens</option>
+            <option value="pwd">PWD</option>
+            <option value="farmer">Farmers</option>
+            <option value="minor">Minors</option>
+          </select>
+        </div>
+        <div class="table-wrap">
+          <table>
+            <thead>
+              <tr>
+                <th>Name</th>
+                <th>Age</th>
+                <th>Address</th>
+                <th>Purok</th>
+                <th>Status</th>
+                <th>Tags</th>
+                <th>Actions</th>
+              </tr>
+            </thead>
+            <tbody id="residentRows"></tbody>
+          </table>
+        </div>
+      </section>
+
+      <section class="view" id="households">
+        <div class="toolbar">
+          <label class="search-box">
+            <span>Search</span>
+            <input id="householdSearch" type="search" placeholder="Household head, address, purok" />
+          </label>
+          <button class="button secondary" id="addHouseholdBtn">Add household</button>
+        </div>
+        <div id="householdGrid" class="card-grid"></div>
+      </section>
+
+      <section class="view" id="certificates">
+        <div class="split">
+          <form class="panel form-panel" id="certificateForm">
+            <div class="panel-head">
+              <h2>Prepare certificate</h2>
+            </div>
+            <label>
+              Search name
+              <div class="search-action">
+                <input id="certificateNameSearch" type="search" placeholder="Type resident name" />
+                <button class="button secondary" id="certificateSearchBtn" type="button">Search</button>
+              </div>
+            </label>
+            <label>
+              Resident
+              <select id="certificateResident"></select>
+            </label>
+            <label>
+              Certificate type
+              <select id="certificateType">
+                <option value="Brgy. Clearance.docx">Barangay Clearance</option>
+                <option value="Brgy. Residency.docx">Certificate of Residency</option>
+                <option value="INDIGENCY SAMPLE.docx">Barangay Indigency</option>
+                <option value="LOW INCOME SAMPLE.docx">Certificate of Low Income</option>
+                <option value="GOOD MORAL SAMPLE.docx">Barangay Good Moral</option>
+                <option value="GOOD MORAL SAMPLE (1).docx">Barangay Good Moral (Alternate File)</option>
+                <option value="RSBSA CERTIFCATION SAMPLE.docx">Certification (RSBSA)</option>
+                <option value="FJS SAMPLE.docx">Barangay Certification (First Time Jobseekers)</option>
+                <option value="Cert. Oneness.docx">Certificate of Oneness</option>
+                <option value="Bussiness Closure.docx">Barangay Certification (Business Closure)</option>
+              </select>
+            </label>
+            <label>
+              Purpose
+              <input id="certificatePurpose" value="Employment requirement" />
+            </label>
+            <div class="form-actions">
+              <button class="button" type="submit">Update preview</button>
+              <button class="button secondary" id="printCertificateBtn" type="button">Print certificate</button>
+            </div>
+          </form>
+          <article class="certificate-preview" id="certificatePreview">
+            <div class="cert-logo-row">
+              <img class="cert-logo" src="municipal-logo.jpeg" alt="Municipal logo" />
+              <img class="cert-logo" src="barangay-logo.png" alt="Barangay logo" />
+            </div>
+            <p>Republic of the Philippines</p>
+            <h2>Barangay Jurisdiccion</h2>
+            <h3>Certificate Preview</h3>
+            <p>Select a resident and certificate type to show the official paper here.</p>
+          </article>
+        </div>
+      </section>
+
+      <section class="view" id="blotter">
+        <div class="toolbar">
+          <label class="search-box">
+            <span>Search</span>
+            <input id="caseSearch" type="search" placeholder="Case number, complainant, respondent" />
+          </label>
+          <button class="button secondary" id="addCaseBtn">Add case</button>
+        </div>
+        <div id="caseList" class="case-list"></div>
+      </section>
+
+      <section class="view" id="broadcast">
+        <div class="alert-type-grid">
+          <article class="alert-type-card active" data-alert-type="Barangay Announcement Blast">
+            <span>Barangay Broadcast Alert</span>
+            <h2>Barangay Announcement Blast</h2>
+            <p>Send official barangay updates to all residents.</p>
+          </article>
+          <article class="alert-type-card" data-alert-type="Weather Alert">
+            <span>Barangay Broadcast Alert</span>
+            <h2>Weather Alert</h2>
+            <p>Warn residents about rain, flooding, heat, and storm conditions.</p>
+          </article>
+          <article class="alert-type-card" data-alert-type="Earthquake Alert">
+            <span>Barangay Broadcast Alert</span>
+            <h2>Earthquake Alert</h2>
+            <p>Share safety instructions and evacuation notices after tremors.</p>
+          </article>
+          <article class="alert-type-card" data-alert-type="Emergency Notification">
+            <span>Barangay Broadcast Alert</span>
+            <h2>Emergency Notification</h2>
+            <p>Issue urgent safety instructions for fire, health, security, or rescue events.</p>
+          </article>
+        </div>
+
+        <div class="broadcast-grid">
+          <form class="panel form-panel" id="broadcastForm">
+            <div class="panel-head">
+              <h2>Scheduled announcement</h2>
+            </div>
+            <label>
+              Alert type
+              <select id="broadcastType" name="type">
+                <option>Barangay Announcement Blast</option>
+                <option>Weather Alert</option>
+                <option>Earthquake Alert</option>
+                <option>Emergency Notification</option>
+              </select>
+            </label>
+            <label>
+              Title
+              <input name="title" placeholder="Example: Road clearing schedule" required />
+            </label>
+            <label>
+              Message
+              <textarea name="message" rows="5" placeholder="Type the announcement details residents should receive." required></textarea>
+            </label>
+            <div class="form-grid">
+              <label>
+                Schedule date
+                <input name="date" type="date" required />
+              </label>
+              <label>
+                Schedule time
+                <input name="time" type="time" required />
+              </label>
+            </div>
+            <label>
+              Audience
+              <select name="audience">
+                <option>All residents</option>
+                <option>All puroks</option>
+                <option>Purok 1</option>
+                <option>Purok 2</option>
+                <option>Purok 3</option>
+                <option>Purok 4</option>
+                <option>Senior citizens</option>
+                <option>PWD residents</option>
+              </select>
+            </label>
+            <div class="form-actions">
+              <button class="button" type="submit">Schedule announcement</button>
+              <button class="button secondary" id="clearBroadcastForm" type="button">Clear</button>
+            </div>
+          </form>
+
+          <section class="panel">
+            <div class="panel-head">
+              <h2>Broadcast queue</h2>
+              <span class="tag gold" id="scheduledCount">0 scheduled</span>
+            </div>
+            <div id="broadcastList" class="broadcast-list"></div>
+          </section>
+        </div>
+      </section>
+
+      <section class="view" id="portal">
+        <div class="portal-grid">
+          <form class="panel portal-form" id="citizenRegistrationForm">
+            <div class="panel-head">
+              <h2>Citizen registration</h2>
+              <span class="tag gold">Pending after submit</span>
+            </div>
+
+            <fieldset>
+              <legend>Account information</legend>
+              <div class="form-grid">
+                <label>First name <input name="firstName" required /></label>
+                <label>Middle name <input name="middleName" /></label>
+                <label>Last name <input name="lastName" required /></label>
+                <label>Email address <input name="email" type="email" required /></label>
+                <label>Mobile number <input name="contact" required placeholder="09XX XXX XXXX" /></label>
+                <label>Password <input name="password" type="password" required minlength="6" /></label>
+                <label>Confirm password <input name="confirmPassword" type="password" required minlength="6" /></label>
+              </div>
+            </fieldset>
+
+            <fieldset>
+              <legend>Personal information</legend>
+              <div class="form-grid">
+                <label>Birthdate <input id="portalBirthdate" name="birthdate" type="date" required /></label>
+                <label>Age <input id="portalAge" readonly placeholder="Auto-calculated" /></label>
+                <label>Sex
+                  <select name="sex" required>
+                    <option value="">Select sex</option>
+                    <option>Female</option>
+                    <option>Male</option>
+                  </select>
+                </label>
+                <label>Civil status
+                  <select name="civilStatus" required>
+                    <option>Single</option>
+                    <option>Married</option>
+                    <option>Widowed</option>
+                    <option>Separated</option>
+                  </select>
+                </label>
+                <label>Nationality <input name="nationality" value="Filipino" required /></label>
+                <label>Occupation <input name="occupation" required /></label>
+                <label>Religion <input name="religion" placeholder="Optional" /></label>
+              </div>
+            </fieldset>
+
+            <fieldset>
+              <legend>Address</legend>
+              <div class="form-grid">
+                <label>House no. <input name="houseNo" required /></label>
+                <label>Street <input name="street" required /></label>
+                <label>Purok <input name="purok" required /></label>
+                <label>Barangay <input name="barangay" value="Jurisdiccion" readonly /></label>
+                <label>Municipality <input name="municipality" value="Amulung" readonly /></label>
+                <label>Province <input name="province" value="Cagayan" readonly /></label>
+              </div>
+            </fieldset>
+
+            <fieldset>
+              <legend>Identification</legend>
+              <div class="form-grid">
+                <label>Upload valid ID <input name="validId" type="file" accept="image/*,.pdf" required /></label>
+                <label>Selfie with ID <input name="selfieId" type="file" accept="image/*" /></label>
+                <label>Voter status
+                  <select name="voterStatus">
+                    <option>Registered voter</option>
+                    <option>Not registered</option>
+                  </select>
+                </label>
+                <label>Voter ID number <input name="voterId" placeholder="Optional" /></label>
+              </div>
+            </fieldset>
+
+            <fieldset>
+              <legend>Family information</legend>
+              <div class="form-grid">
+                <label>Household head <input name="householdHead" required /></label>
+                <label>Relationship to household head <input name="relationshipToHead" required /></label>
+                <label>Number of family members <input name="familyMembers" type="number" min="1" value="1" required /></label>
+              </div>
+            </fieldset>
+
+            <fieldset>
+              <legend>Special categories</legend>
+              <div class="checks">
+                <label><input type="checkbox" name="senior" /> Senior Citizen</label>
+                <label><input type="checkbox" name="pwd" /> Person with Disability (PWD)</label>
+                <label><input type="checkbox" name="soloParent" /> Solo Parent</label>
+                <label><input type="checkbox" name="farmer" /> Farmer</label>
+                <label><input type="checkbox" name="fisherfolk" /> Fisherfolk</label>
+                <label><input type="checkbox" name="student" /> Student</label>
+              </div>
+            </fieldset>
+
+            <fieldset>
+              <legend>Emergency contact</legend>
+              <div class="form-grid">
+                <label>Contact person <input name="emergencyContact" required /></label>
+                <label>Relationship <input name="emergencyRelationship" required /></label>
+                <label>Contact number <input name="emergencyNumber" required /></label>
+              </div>
+            </fieldset>
+
+            <p class="login-message" id="portalMessage"></p>
+            <button class="button" type="submit">Register</button>
+          </form>
+
+          <section class="panel">
+            <div class="panel-head">
+              <h2>Admin verification queue</h2>
+              <div class="queue-actions">
+                <button class="small-button" id="refreshPortalQueue" type="button">Refresh Queue</button>
+                <span class="tag gold" id="pendingRegistrationCount">0 pending</span>
+              </div>
+            </div>
+            <div id="portalAdminQueue" class="portal-queue"></div>
+          </section>
+
+          <section class="panel citizen-services-panel">
+            <div class="panel-head">
+              <h2>Approved citizen services</h2>
+              <span class="tag blue">Documents and tracking</span>
+            </div>
+            <form class="portal-form" id="citizenRequestForm">
+              <label>Approved account email <input name="email" type="email" required placeholder="Use approved registration email" /></label>
+              <label>Document request
+                <select name="documentType">
+                  <option>Barangay Clearance</option>
+                  <option>Certificate of Residency</option>
+                  <option>Barangay Indigency</option>
+                  <option>Certificate of Low Income</option>
+                  <option>Good Moral Certificate</option>
+                </select>
+              </label>
+              <label>Purpose <input name="purpose" required placeholder="Employment, school, assistance, etc." /></label>
+              <button class="button" type="submit">Submit document request</button>
+            </form>
+            <div id="citizenRequestList" class="portal-queue"></div>
+          </section>
+        </div>
+      </section>
+
+      <section class="view" id="portalRequests">
+        <section class="panel">
+          <div class="panel-head">
+            <h2>Citizen certificate requests</h2>
+            <div class="queue-actions">
+              <button class="small-button" id="refreshPortalRequests" type="button">Refresh Requests</button>
+              <span class="tag gold" id="portalRequestCount">0 requests</span>
+            </div>
+          </div>
+          <div id="portalRequestList" class="portal-queue"></div>
+        </section>
+      </section>
+
+      <section class="view" id="auditLogs">
+        <section class="panel">
+          <div class="panel-head">
+            <h2>Audit logs</h2>
+            <div class="queue-actions">
+              <button class="small-button" id="refreshAuditLogs" type="button">Refresh Logs</button>
+              <span class="tag gold" id="auditLogCount">0 logs</span>
+            </div>
+          </div>
+          <div id="auditLogList" class="audit-log-list"></div>
+        </section>
+      </section>
+
+      <section class="view" id="reports">
+        <div class="report-grid">
+          <section class="panel">
+            <div class="panel-head">
+              <h2>Demographics</h2>
+            </div>
+            <div id="demographicReport" class="report-list"></div>
+          </section>
+          <section class="panel">
+            <div class="panel-head">
+              <h2>Quick lists</h2>
+            </div>
+            <div id="quickLists" class="report-list"></div>
+          </section>
+        </div>
+        <section class="mission-vision">
+          <article class="mv-card mission-card">
+            <div>
+              <span class="mv-label">Mission</span>
+              <h2>Active Citizenship</h2>
+            </div>
+            <p>To promote self-reliance by empowering citizenry through active participation in all barangay affairs.</p>
+          </article>
+          <article class="mv-card vision-card">
+            <div>
+              <span class="mv-label">Vision</span>
+              <h2>Peaceful, Orderly, Safe</h2>
+            </div>
+            <p>As the main distributor of high quality of rice in the northern part of Amulung, with God-loving, respectful and hospitable residents living in a peaceful, orderly, and safe community supported by functional infrastructure facilities, living a sustainable economy led by matured and self-oriented leaders.</p>
+          </article>
+        </section>
+      </section>
+    </main>
+
+    <dialog id="residentDialog">
+      <form method="dialog" id="residentForm" class="dialog-form">
+        <div class="dialog-head">
+          <h2 id="residentDialogTitle">Add resident</h2>
+          <button class="icon-button" value="cancel" title="Close">×</button>
+        </div>
+        <input type="hidden" name="id" />
+        <div class="form-grid">
+          <label>First name <input name="firstName" required /></label>
+          <label>Middle name <input name="middleName" /></label>
+          <label>Last name <input name="lastName" required /></label>
+          <label>Birthdate <input name="birthdate" type="date" required /></label>
+          <label>Civil status
+            <select name="civilStatus">
+              <option>Single</option>
+              <option>Married</option>
+              <option>Widowed</option>
+              <option>Separated</option>
+            </select>
+          
+          <label>Address <input name="address" required /></label>
+          
+          <label>Purok <input name="purok" required /></label>
+          <label>Phone number <input name="contact" placeholder="09XX XXX XXXX" /></label>
+          <label>Email <input name="email" type="email" placeholder="resident@example.com" /></label>
+          <label>Household head <input name="householdHead" /></label>
+        </div>
+        <div class="checks">
+          <label><input type="checkbox" name="voter" /> Voter</label>
+          <label><input type="checkbox" name="pwd" /> PWD</label>
+          <label><input type="checkbox" name="senior" /> Senior</label>
+          <label><input type="checkbox" name="farmer" /> Farmer</label>
+        </div>
+        <menu>
+          <button class="button secondary" value="cancel">Cancel</button>
+          <button class="button" value="default">Save resident</button>
+        </menu>
+      </form>
+    </dialog>
+
+    <dialog id="loginDialog">
+      <form method="dialog" id="loginForm" class="dialog-form login-form">
+        <div class="dialog-head">
+          <h2>Login</h2>
+          <button class="icon-button" value="cancel" title="Close">×</button>
+        </div>
+        <label>Username <input name="username" autocomplete="username" required /></label>
+        <label>Password <input name="password" type="password" autocomplete="current-password" required /></label>
+        <p class="login-message" id="loginMessage"></p>
+        <menu>
+          <button class="button secondary" value="cancel">Cancel</button>
+          <button class="button" value="default">Login</button>
+        </menu>
+      </form>
+    </dialog>
+
+    <dialog id="householdDialog">
+      <form method="dialog" id="householdForm" class="dialog-form">
+        <div class="dialog-head">
+          <h2 id="householdDialogTitle">Add household</h2>
+          <button class="icon-button" value="cancel" title="Close">×</button>
+        </div>
+        <input type="hidden" name="key" />
+        <div class="form-grid">
+          <label>Household head <input name="householdHead" required /></label>
+          <label>Address <input name="address" required /></label>
+          <label>Purok <input name="purok" required /></label>
+        </div>
+        <menu>
+          <button class="button secondary" value="cancel">Cancel</button>
+          <button class="button" value="default">Save household</button>
+        </menu>
+      </form>
+    </dialog>
+
+    <dialog id="caseDialog">
+      <form method="dialog" id="caseForm" class="dialog-form">
+        <div class="dialog-head">
+          <h2 id="caseDialogTitle">Add blotter case</h2>
+          <button class="icon-button" value="cancel" title="Close">×</button>
+        </div>
+        <input type="hidden" name="id" />
+        <div class="form-grid">
+          <label>Complainant <input name="complainant" required /></label>
+          <label>Respondent <input name="respondent" required /></label>
+          <label>Incident date <input name="date" type="date" required /></label>
+          <label>Status
+            <select name="status">
+              <option>Open</option>
+              <option>Mediation</option>
+              <option>Resolved</option>
+            </select>
+          </label>
+        </div>
+        <label>Details <textarea name="details" rows="4" required></textarea></label>
+        <menu>
+          <button class="button secondary" value="cancel">Cancel</button>
+          <button class="button" value="default">Save case</button>
+        </menu>
+      </form>
+    </dialog>
+
+    <script src="app.js"></script>
+  </body>
+</html>
