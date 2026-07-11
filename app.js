@@ -560,9 +560,28 @@ function certificateLineClass(selectedFile, line, index) {
   return index > 0 && !line.includes(":") ? "indent" : "";
 }
 
+function ordinalDay(day) {
+  if ([11, 12, 13].includes(day % 100)) return `${day}th`;
+  if (day % 10 === 1) return `${day}st`;
+  if (day % 10 === 2) return `${day}nd`;
+  if (day % 10 === 3) return `${day}rd`;
+  return `${day}th`;
+}
+
+function certificateDate(date = new Date()) {
+  return {
+    day: ordinalDay(date.getDate()),
+    month: date.toLocaleString("en-US", { month: "long" }),
+    year: date.getFullYear(),
+    full: date.toLocaleDateString("en-US", { month: "long", day: "numeric", year: "numeric" })
+  };
+}
+
 function templateLines(fileName, fields, purpose) {
   const purposeText = purpose || "Legal Purposes";
-  const issued = "Given this ____ day of _____________________, 2026 at Barangay Jurisdiccion, Amulung, Cagayan.";
+  const issueDate = certificateDate();
+  const validUntil = certificateDate(new Date(new Date().setFullYear(new Date().getFullYear() + 1)));
+  const issued = `Given this ${issueDate.day} day of ${issueDate.month}, ${issueDate.year} at Barangay Jurisdiccion, Amulung, Cagayan.`;
   const residentLine = `${fields.name}, ${fields.age} Years Old, Filipino, ${fields.civilStatus}, and a bona fide resident of Zone ${fields.zone}, Barangay Jurisdiccion, Amulung, Cagayan.`;
 
   const templates = {
@@ -577,7 +596,7 @@ function templateLines(fileName, fields, purpose) {
       "Left Thumb     Right Thumb     Applicant's Signature/Thumb mark",
       "Further certify that this person is of good moral character and has no unquestionable reputation within the community.",
       `This certification is being issued upon the request of the above-named person as a requirement for ${purposeText}.`,
-      "Issued this ____ day of ___________, 2026 at Jurisdiccion, Amulung, Cagayan."
+      `Issued this ${issueDate.day} day of ${issueDate.month}, ${issueDate.year} at Jurisdiccion, Amulung, Cagayan.`
     ],
     "Brgy. Residency.docx": [
       "TO WHOM IT MAY CONCERN:",
@@ -591,7 +610,7 @@ function templateLines(fileName, fields, purpose) {
       `This is to certify that ${fields.name}, ${fields.age} Years Old, Filipino, Male/Female, ${fields.civilStatus}, and bonafide resident of Zone ${fields.zone} barangay Jurisdiccion, Amulung, Cagayan.`,
       "This is to further certify that she owned a ___________________________ (Establishment) located at Zone ___, of this barangay and this store was already CLOSE since November 2023 up to present.",
       `This certification is being issued upon the request of the above-named person for those whose name and signature appeared below as a requirements for ${purposeText}.`,
-      "Given this _________ day of _______________, 202__ at Barangay Jurisdiccion, Amulung, Cagayan."
+      issued
     ],
     "Cert. Oneness.docx": [
       "TO WHOM IT MY CONCERN:",
@@ -604,8 +623,8 @@ function templateLines(fileName, fields, purpose) {
       "(First Time Jobseekers Assistance Act - RA 11261)",
       `This is to CERTIFY that, ${fields.name}, a resident of Purok/Zone ${fields.zone}, Barangay Jurisdiccion, Amulung, Cagayan, for ____ years and _____ months, is a qualified availee of RA 11261 or the First Time Jobseekers Assistance Act of 2019.`,
       `I FURTHER CERTIFY that, the holder/bearer was informed of ${fields.possessive} rights, including the duties and responsibilities accorded by RA 11261 through the Oath of Understanding ${fields.pronoun} has signed and executed in the presence of Barangay Official/s.`,
-      "SIGNED this _____________ day of _________________, 2026, in the Barangay Jurisdiccion, Amulung, Cagayan.",
-      "This CERTIFICATION is valid only until _____________________, 2027, one (1) year from the issuance.",
+      `SIGNED this ${issueDate.day} day of ${issueDate.month}, ${issueDate.year}, in the Barangay Jurisdiccion, Amulung, Cagayan.`,
+      `This CERTIFICATION is valid only until ${validUntil.full}, one (1) year from the issuance.`,
       "Witnessed by: _________________________ Sangguniang Barangay Member"
     ],
     "GOOD MORAL SAMPLE.docx": [
@@ -613,14 +632,14 @@ function templateLines(fileName, fields, purpose) {
       `This is to certify that ${fields.name}, ${fields.age} Years Old, Male/Female, Filipino, ${fields.civilStatus}, and resident of Zone ${fields.zone} barangay Jurisdiccion, Amulung, Cagayan, personally known to me as a low-abiding citizen of this barangay.`,
       `${fields.pronoun.charAt(0).toUpperCase() + fields.pronoun.slice(1)} has not been involved in any derogatory record or immoral activites within the community, and as recognized as a person of good moral character.`,
       `This certification is being issued upon the request of the interested party for ${purposeText}.`,
-      "issued this _____ day of _________________, 2026 at Barangay Jurisdiccion, Amulung, Cagayan."
+      `Issued this ${issueDate.day} day of ${issueDate.month}, ${issueDate.year} at Barangay Jurisdiccion, Amulung, Cagayan.`
     ],
     "GOOD MORAL SAMPLE (1).docx": [
       "TO WHOM IT MAY CONCERN:",
       `This is to certify that ${fields.name}, ${fields.age} Years Old, Male/Female, Filipino, ${fields.civilStatus}, and resident of Zone ${fields.zone} barangay Jurisdiccion, Amulung, Cagayan, personally known to me as a low-abiding citizen of this barangay.`,
       `${fields.pronoun.charAt(0).toUpperCase() + fields.pronoun.slice(1)} has not been involved in any derogatory record or immoral activites within the community, and as recognized as a person of good moral character.`,
       `This certification is being issued upon the request of the interested party for ${purposeText}.`,
-      "issued this _____ day of _________________, 2026 at Barangay Jurisdiccion, Amulung, Cagayan."
+      `Issued this ${issueDate.day} day of ${issueDate.month}, ${issueDate.year} at Barangay Jurisdiccion, Amulung, Cagayan.`
     ],
     "INDIGENCY SAMPLE.docx": [
       "TO WHOM IT MAY CONCERN:",
@@ -667,6 +686,7 @@ function templateLines(fileName, fields, purpose) {
 }
 
 function renderBarangayClearance(fields, template) {
+  const issueDate = certificateDate();
   return `
     ${commonHeaderHtml()}
     <p class="cert-number">${escapeHtml(template.numberLabel)}<br />2026-</p>
@@ -691,7 +711,7 @@ function renderBarangayClearance(fields, template) {
       </div>
       <p class="clearance-paragraph">Further certify that this person is a good moral character and no unquestionable reputation within the community.</p>
       <p class="clearance-paragraph">This certification is being issued upon the request of the above-named person for those whose name and signature appeared as a requirements for LEGAL purposes it may serve him/her best.</p>
-      <p class="clearance-paragraph">Issued this ____ day of ___________, 2026 at Jurisdiccion, Amulung, Cagayan.</p>
+      <p class="clearance-paragraph">Issued this ${escapeHtml(issueDate.day)} day of ${escapeHtml(issueDate.month)}, ${escapeHtml(issueDate.year)} at Jurisdiccion, Amulung, Cagayan.</p>
     </div>
     <div class="cert-signature">
       <strong>MA. LOUELLA C. RICARDO</strong>
@@ -701,6 +721,8 @@ function renderBarangayClearance(fields, template) {
 }
 
 function renderFjsCertificate(fields, template) {
+  const issueDate = certificateDate();
+  const validUntil = certificateDate(new Date(new Date().setFullYear(new Date().getFullYear() + 1)));
   return `
     ${fjsHeaderHtml()}
     <p class="fjs-number">${escapeHtml(template.numberLabel)}<br />2026-</p>
@@ -709,8 +731,8 @@ function renderFjsCertificate(fields, template) {
     <div class="fjs-body">
       <p>This is to <strong>CERTIFY</strong> that, <span class="fjs-line">${escapeHtml(fields.name)}</span>, a resident of <strong>Purok/Zone</strong> <span class="fjs-short">${escapeHtml(fields.zone)}</span>, Barangay <strong>Jurisdiccion, Amulung, Cagayan</strong>, for <span class="fjs-short">____</span> years and <span class="fjs-short">____</span> months, is a qualified availee of RA 11261 or the First Time Jobseekers Assistance Act of 2019.</p>
       <p><strong>I FURTHER CERTIFY</strong> that, the holder/bearer was informed of his/her rights, including the duties and responsibilities accorded by RA 11261 through the Oath of Understanding he/she has signed and executed in the presence of Barangay Officials.</p>
-      <p><strong>SIGNED</strong> this <span class="fjs-short">____</span> day of <span class="fjs-line">_________________</span>, <strong>2026</strong>, in the Barangay Jurisdiccion, Amulung, Cagayan.</p>
-      <p>This <strong>CERTIFICATION</strong> is valid only until <span class="fjs-line">_________________</span>, <strong>2027</strong>, one (1) year from the issuance.</p>
+      <p><strong>SIGNED</strong> this <span class="fjs-short">${escapeHtml(issueDate.day)}</span> day of <span class="fjs-line">${escapeHtml(issueDate.month)}</span>, <strong>${escapeHtml(issueDate.year)}</strong>, in the Barangay Jurisdiccion, Amulung, Cagayan.</p>
+      <p>This <strong>CERTIFICATION</strong> is valid only until <span class="fjs-line">${escapeHtml(validUntil.full)}</span>, one (1) year from the issuance.</p>
     </div>
     <div class="fjs-signature">
       <strong>MA. LOUELLA C. RICARDO</strong>
@@ -734,6 +756,7 @@ function renderCertificate(event) {
   const purpose = document.querySelector("#certificatePurpose").value;
   const fields = residentMergeFields(resident);
   const lines = templateLines(selectedFile, fields, purpose);
+  const issueDate = certificateDate();
   document.querySelector("#certificatePreview").classList.add("word-page");
   document.querySelector("#certificatePreview").classList.toggle("clearance-page", selectedFile === "Brgy. Clearance.docx");
   document.querySelector("#certificatePreview").classList.toggle("fjs-page", selectedFile === "FJS SAMPLE.docx");
@@ -775,7 +798,7 @@ function renderCertificate(event) {
         <span>Paid Under:</span>
         <span>O.R. Number: _______________</span>
         <span>CTC Number: _______________</span>
-        <span>Issued on: _______________</span>
+        <span>Issued on: ${escapeHtml(issueDate.full)}</span>
         <span>Issued at: Jurisdiccion, Amulung, Cagayan</span>
       </div>
     ` : ""}
