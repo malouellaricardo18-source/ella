@@ -175,6 +175,7 @@
                 <option value="FJS SAMPLE.docx">Barangay Certification (First Time Jobseekers)</option>
                 <option value="Cert. Oneness.docx">Certificate of Oneness</option>
                 <option value="Bussiness Closure.docx">Barangay Certification (Business Closure)</option>
+                <option value="Special Permit 2026-006.docx">Special Permit</option>
               </select>
             </label>
             <label>
@@ -428,7 +429,12 @@
                   <option>Barangay Indigency</option>
                   <option>Certificate of Low Income</option>
                   <option>Good Moral Certificate</option>
+                  <option>Special Permit</option>
+                  <option>Others</option>
                 </select>
+              </label>
+              <label id="adminOtherDocumentTypeField" hidden>Specify other request
+                <input name="otherDocumentType" id="adminOtherDocumentType" placeholder="Type the document or request needed" />
               </label>
               <label>Purpose <input name="purpose" required placeholder="Employment, school, assistance, etc." /></label>
               <button class="button" type="submit">Submit document request</button>
@@ -601,7 +607,7 @@
     </dialog>
 
     <script src="https://www.gstatic.com/firebasejs/10.12.5/firebase-app-compat.js"></script>
-    <script src="https://www.gstatic.com/firebasejs/10.12.5/firebase-firestore-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.12.5/firebase-database-compat.js"></script>
     <script src="app.js"></script>
   </body>
 </html>

@@ -3,6 +3,7 @@ const storageKey = "barangay-data-management-v1";
 const firebaseConfig = {
   apiKey: "AIzaSyATDliRdiFq5NV5ydQ7ogI8MrQaUs538yk",
   authDomain: "jurisdiccion-management.firebaseapp.com",
+  databaseURL: "https://jurisdiccion-management-default-rtdb.firebaseio.com",
   projectId: "jurisdiccion-management",
   storageBucket: "jurisdiccion-management.firebasestorage.app",
   messagingSenderId: "77385574453",
@@ -183,7 +184,8 @@ const certificateTemplates = {
   "RSBSA CERTIFCATION SAMPLE.docx": { label: "Certification" },
   "FJS SAMPLE.docx": { label: "Barangay Certification", numberLabel: "Barangay Certificate Number:" },
   "Cert. Oneness.docx": { label: "Certificate of Oneness" },
-  "Bussiness Closure.docx": { label: "Barangay Certification" }
+  "Bussiness Closure.docx": { label: "Barangay Certification" },
+  "Special Permit 2026-006.docx": { label: "Special Permit", numberLabel: "Special Permit No:" }
 };
 
 const views = [...document.querySelectorAll(".view")];
@@ -244,25 +246,23 @@ function saveData() {
 }
 
 function initCloudSync() {
-  if (!window.firebase?.initializeApp || !window.firebase?.firestore) return;
+  if (!window.firebase?.initializeApp || !window.firebase?.database) return;
   try {
     if (!firebase.apps.length) firebase.initializeApp(firebaseConfig);
-    cloudDb = firebase.firestore();
+    cloudDb = firebase.database();
     const localStartupData = cloudCollections.reduce((items, name) => {
       items[name] = [...(data[name] || [])];
       return items;
     }, {});
     cloudCollections.forEach((name) => {
-      cloudDb.collection(name).onSnapshot((snapshot) => {
-        if (snapshot.empty && localStartupData[name]?.length) {
-          localStartupData[name].forEach((item, index) => {
-            const id = String(item.id || `${Date.now()}-${index}`);
-            cloudDb.collection(name).doc(id).set(item, { merge: true });
-          });
+      cloudDb.ref(name).on("value", (snapshot) => {
+        const items = snapshot.val();
+        if (!items && localStartupData[name]?.length) {
+          cloudDb.ref(name).set(arrayToCloudMap(localStartupData[name]));
           return;
         }
         applyingCloudState = true;
-        data[name] = snapshot.docs.map((doc) => ({ id: Number(doc.id) || doc.id, ...doc.data() }));
+        data[name] = cloudMapToArray(items);
         data[name].sort((a, b) => (Number(b.id) || 0) - (Number(a.id) || 0));
         localStorage.setItem(storageKey, JSON.stringify(data));
         applyingCloudState = false;
@@ -277,13 +277,23 @@ function initCloudSync() {
 function pushDataToCloud() {
   if (!cloudDb) return;
   cloudCollections.forEach((name) => {
-    (data[name] || []).forEach((item, index) => {
-      const id = String(item.id || `${Date.now()}-${index}`);
-      cloudDb.collection(name).doc(id).set(item, { merge: true }).catch((error) => {
-        console.warn(`Could not sync ${name}`, error);
-      });
+    cloudDb.ref(name).set(arrayToCloudMap(data[name] || [])).catch((error) => {
+      console.warn(`Could not sync ${name}`, error);
     });
   });
+}
+
+function arrayToCloudMap(items) {
+  return items.reduce((map, item, index) => {
+    const id = String(item.id || `${Date.now()}-${index}`).replace(/[.#$/\[\]]/g, "-");
+    map[id] = item;
+    return map;
+  }, {});
+}
+
+function cloudMapToArray(items) {
+  if (!items) return [];
+  return Object.entries(items).map(([id, value]) => ({ id: Number(value?.id || id) || value?.id || id, ...value }));
 }
 
 function addAuditLog(action, actor = loggedInUser || "admin", source = "Management System", details = "") {
@@ -643,6 +653,13 @@ function templateLines(fileName, fields, purpose) {
       issued,
       "HON. ROMEO C. ARESTA",
       "Brgy. Kagawad/ Comm. On Agriculture"
+    ],
+    "Special Permit 2026-006.docx": [
+      "TO WHOM IT MAY CONCERN:",
+      `This is to certify that ${fields.name}, ${fields.age} Years Old, Filipino, ${fields.civilStatus}, and a bona fide resident of Zone ${fields.zone}, Barangay Jurisdiccion, Amulung, Cagayan.`,
+      `This Special Permit is issued upon the request of the above-named person for ${purposeText}.`,
+      "This permit is valid only for the stated purpose and subject to existing barangay rules and regulations.",
+      issued
     ]
   };
 
@@ -1442,11 +1459,12 @@ function saveCitizenDocumentRequest(form) {
     alert("This email is not approved yet. The account must be approved by the barangay before requesting documents.");
     return;
   }
+  const requestedDocument = values.documentType === "Others" ? `Others: ${values.otherDocumentType.trim()}` : values.documentType;
   const request = {
     id: Date.now(),
     name: citizen.firstName ? fullName(citizen) : registrationFullName(citizen),
     email: values.email,
-    documentType: values.documentType,
+    documentType: requestedDocument,
     purpose: values.purpose,
     status: "Submitted",
     submittedAt: new Date().toLocaleString()
@@ -1469,6 +1487,16 @@ function updatePortalRequestStatus(id, status) {
   data.activity = data.activity.slice(0, 5);
   saveData();
   renderAll();
+}
+
+function updateAdminOtherDocumentField() {
+  const select = citizenRequestForm.querySelector("[name='documentType']");
+  const field = document.querySelector("#adminOtherDocumentTypeField");
+  const input = document.querySelector("#adminOtherDocumentType");
+  const isOther = select.value === "Others";
+  field.hidden = !isOther;
+  input.required = isOther;
+  if (!isOther) input.value = "";
 }
 
 async function copyAllSmsNumbers(id) {
@@ -1548,7 +1576,9 @@ citizenRegistrationForm.addEventListener("submit", (event) => {
 citizenRequestForm.addEventListener("submit", (event) => {
   event.preventDefault();
   saveCitizenDocumentRequest(citizenRequestForm);
+  updateAdminOtherDocumentField();
 });
+citizenRequestForm.querySelector("[name='documentType']").addEventListener("change", updateAdminOtherDocumentField);
 portalBirthdate.addEventListener("input", () => {
   portalAge.value = portalBirthdate.value ? ageFromBirthdate(portalBirthdate.value) : "";
 });

@@ -635,10 +635,17 @@
                   <option value="RSBSA Certification">RSBSA - P100.00</option>
                   <option value="First Time Job Seeker">First Time Job Seeker - Free</option>
                   <option value="Certificate of Oneness">Certificate of Oneness - Free</option>
+                  <option value="Indigency">Indigency - Free</option>
+                  <option value="Low Income">Low Income - Free</option>
                   <option value="Certificate of Residency">Certificate of Residency - P50.00</option>
                   <option value="Good Moral">Good Moral - P50.00</option>
                   <option value="Business Clearance">Business Clearance - P100.00</option>
+                  <option value="Special Permit">Special Permit - Free</option>
+                  <option value="Others">Others</option>
                 </select>
+              </label>
+              <label id="otherDocumentTypeField" hidden>Specify other request
+                <input name="otherDocumentType" id="otherDocumentType" placeholder="Type the document or request needed" />
               </label>
               <label>Purpose <input name="purpose" required placeholder="Employment, school, assistance, etc." /></label>
               <label>Payment method
@@ -681,13 +688,14 @@
     </section>
 
     <script src="https://www.gstatic.com/firebasejs/10.12.5/firebase-app-compat.js"></script>
-    <script src="https://www.gstatic.com/firebasejs/10.12.5/firebase-firestore-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.12.5/firebase-database-compat.js"></script>
     <script>
       const storageKey = "barangay-data-management-v1";
       const today = new Date("2026-07-10T00:00:00");
       const firebaseConfig = {
         apiKey: "AIzaSyATDliRdiFq5NV5ydQ7ogI8MrQaUs538yk",
         authDomain: "jurisdiccion-management.firebaseapp.com",
+        databaseURL: "https://jurisdiccion-management-default-rtdb.firebaseio.com",
         projectId: "jurisdiccion-management",
         storageBucket: "jurisdiccion-management.firebasestorage.app",
         messagingSenderId: "77385574453",
@@ -711,6 +719,8 @@
       const birthdate = document.querySelector("#birthdate");
       const age = document.querySelector("#age");
       const documentType = document.querySelector("#documentType");
+      const otherDocumentTypeField = document.querySelector("#otherDocumentTypeField");
+      const otherDocumentType = document.querySelector("#otherDocumentType");
       const paymentMethod = document.querySelector("#paymentMethod");
       const requestFee = document.querySelector("#requestFee");
       const feeNote = document.querySelector("#feeNote");
@@ -722,9 +732,13 @@
         "RSBSA Certification": 100,
         "First Time Job Seeker": 0,
         "Certificate of Oneness": 0,
+        "Indigency": 0,
+        "Low Income": 0,
         "Certificate of Residency": 50,
         "Good Moral": 50,
-        "Business Clearance": 100
+        "Business Clearance": 100,
+        "Special Permit": 0,
+        "Others": 0
       };
 
       function loadState() {
@@ -747,25 +761,23 @@
       }
 
       function initCloudSync() {
-        if (!window.firebase?.initializeApp || !window.firebase?.firestore) return;
+        if (!window.firebase?.initializeApp || !window.firebase?.database) return;
         try {
           if (!firebase.apps.length) firebase.initializeApp(firebaseConfig);
-          cloudDb = firebase.firestore();
+          cloudDb = firebase.database();
           const localStartupData = cloudCollections.reduce((items, name) => {
             items[name] = [...(state[name] || [])];
             return items;
           }, {});
           cloudCollections.forEach((name) => {
-            cloudDb.collection(name).onSnapshot((snapshot) => {
-              if (snapshot.empty && localStartupData[name]?.length) {
-                localStartupData[name].forEach((item, index) => {
-                  const id = String(item.id || `${Date.now()}-${index}`);
-                  cloudDb.collection(name).doc(id).set(item, { merge: true });
-                });
+            cloudDb.ref(name).on("value", (snapshot) => {
+              const items = snapshot.val();
+              if (!items && localStartupData[name]?.length) {
+                cloudDb.ref(name).set(arrayToCloudMap(localStartupData[name]));
                 return;
               }
               applyingCloudState = true;
-              state[name] = snapshot.docs.map((doc) => ({ id: Number(doc.id) || doc.id, ...doc.data() }));
+              state[name] = cloudMapToArray(items);
               state[name].sort((a, b) => (Number(b.id) || 0) - (Number(a.id) || 0));
               localStorage.setItem(storageKey, JSON.stringify(state));
               applyingCloudState = false;
@@ -784,13 +796,23 @@
       function pushStateToCloud() {
         if (!cloudDb) return;
         cloudCollections.forEach((name) => {
-          (state[name] || []).forEach((item, index) => {
-            const id = String(item.id || `${Date.now()}-${index}`);
-            cloudDb.collection(name).doc(id).set(item, { merge: true }).catch((error) => {
-              console.warn(`Could not sync ${name}`, error);
-            });
+          cloudDb.ref(name).set(arrayToCloudMap(state[name] || [])).catch((error) => {
+            console.warn(`Could not sync ${name}`, error);
           });
         });
+      }
+
+      function arrayToCloudMap(items) {
+        return items.reduce((map, item, index) => {
+          const id = String(item.id || `${Date.now()}-${index}`).replace(/[.#$/\[\]]/g, "-");
+          map[id] = item;
+          return map;
+        }, {});
+      }
+
+      function cloudMapToArray(items) {
+        if (!items) return [];
+        return Object.entries(items).map(([id, value]) => ({ id: Number(value?.id || id) || value?.id || id, ...value }));
       }
 
       function addAuditLog(action, actor = "Citizen", source = "Citizen Portal", details = "") {
@@ -1041,6 +1063,8 @@
         requestFee.textContent = formatFee(fee.amount);
         feeNote.textContent = fee.note;
         gcashPanel.hidden = paymentMethod.value !== "GCash" || fee.amount === 0;
+        otherDocumentTypeField.hidden = documentType.value !== "Others";
+        otherDocumentType.required = documentType.value === "Others";
       }
 
       function renderRequestList(target, requests) {
@@ -1127,12 +1151,13 @@
       document.querySelector("#documentRequestForm").addEventListener("submit", (event) => {
         event.preventDefault();
         const values = Object.fromEntries(new FormData(event.currentTarget).entries());
+        const requestedDocument = values.documentType === "Others" ? `Others: ${values.otherDocumentType.trim()}` : values.documentType;
         const fee = calculateDocumentFee(values.documentType);
         state.portalRequests.unshift({
           id: Date.now(),
           name: fullName(currentUser),
           email: currentUser.email,
-          documentType: values.documentType,
+          documentType: requestedDocument,
           purpose: values.purpose,
           paymentMethod: values.paymentMethod,
           feeAmount: fee.amount,
@@ -1140,11 +1165,12 @@
           status: "Submitted",
           submittedAt: new Date().toLocaleDateString()
         });
-        state.activity.unshift(`${fullName(currentUser)} requested ${values.documentType} through Citizen Portal.`);
-        addAuditLog("Document request submitted", fullName(currentUser), "Citizen Portal", `${values.documentType} · ${formatFee(fee.amount)} · ${values.paymentMethod}`);
+        state.activity.unshift(`${fullName(currentUser)} requested ${requestedDocument} through Citizen Portal.`);
+        addAuditLog("Document request submitted", fullName(currentUser), "Citizen Portal", `${requestedDocument} · ${formatFee(fee.amount)} · ${values.paymentMethod}`);
         state.activity = state.activity.slice(0, 5);
         saveState();
         event.currentTarget.reset();
+        updatePaymentSummary();
         renderPortal();
         setPortalView("requests");
       });
