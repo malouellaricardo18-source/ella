@@ -680,9 +680,23 @@
       </main>
     </section>
 
+    <script src="https://www.gstatic.com/firebasejs/10.12.5/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.12.5/firebase-firestore-compat.js"></script>
     <script>
       const storageKey = "barangay-data-management-v1";
       const today = new Date("2026-07-10T00:00:00");
+      const firebaseConfig = {
+        apiKey: "AIzaSyATDliRdiFq5NV5ydQ7ogI8MrQaUs538yk",
+        authDomain: "jurisdiccion-management.firebaseapp.com",
+        projectId: "jurisdiccion-management",
+        storageBucket: "jurisdiccion-management.firebasestorage.app",
+        messagingSenderId: "77385574453",
+        appId: "1:77385574453:web:2ff65dc254bd303afc297c",
+        measurementId: "G-KSQTB88M7M"
+      };
+      const cloudCollections = ["portalRegistrations", "portalRequests", "auditLogs", "broadcasts"];
+      let cloudDb = null;
+      let applyingCloudState = false;
       let state = loadState();
       let currentUser = null;
 
@@ -729,6 +743,54 @@
 
       function saveState() {
         localStorage.setItem(storageKey, JSON.stringify(state));
+        if (!applyingCloudState) pushStateToCloud();
+      }
+
+      function initCloudSync() {
+        if (!window.firebase?.initializeApp || !window.firebase?.firestore) return;
+        try {
+          if (!firebase.apps.length) firebase.initializeApp(firebaseConfig);
+          cloudDb = firebase.firestore();
+          const localStartupData = cloudCollections.reduce((items, name) => {
+            items[name] = [...(state[name] || [])];
+            return items;
+          }, {});
+          cloudCollections.forEach((name) => {
+            cloudDb.collection(name).onSnapshot((snapshot) => {
+              if (snapshot.empty && localStartupData[name]?.length) {
+                localStartupData[name].forEach((item, index) => {
+                  const id = String(item.id || `${Date.now()}-${index}`);
+                  cloudDb.collection(name).doc(id).set(item, { merge: true });
+                });
+                return;
+              }
+              applyingCloudState = true;
+              state[name] = snapshot.docs.map((doc) => ({ id: Number(doc.id) || doc.id, ...doc.data() }));
+              state[name].sort((a, b) => (Number(b.id) || 0) - (Number(a.id) || 0));
+              localStorage.setItem(storageKey, JSON.stringify(state));
+              applyingCloudState = false;
+              if (currentUser) {
+                const latestUser = findAccountByIdentifier(currentUser.email);
+                if (latestUser) currentUser = latestUser;
+                renderPortal();
+              }
+            });
+          });
+        } catch (error) {
+          console.warn("Firebase sync unavailable", error);
+        }
+      }
+
+      function pushStateToCloud() {
+        if (!cloudDb) return;
+        cloudCollections.forEach((name) => {
+          (state[name] || []).forEach((item, index) => {
+            const id = String(item.id || `${Date.now()}-${index}`);
+            cloudDb.collection(name).doc(id).set(item, { merge: true }).catch((error) => {
+              console.warn(`Could not sync ${name}`, error);
+            });
+          });
+        });
       }
 
       function addAuditLog(action, actor = "Citizen", source = "Citizen Portal", details = "") {
@@ -1096,6 +1158,7 @@
         signInMessage.textContent = "";
         switchAuth("signin");
       });
+      initCloudSync();
     </script>
   </body>
 </html>

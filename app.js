@@ -1,5 +1,17 @@
 const today = new Date("2026-07-09T00:00:00");
 const storageKey = "barangay-data-management-v1";
+const firebaseConfig = {
+  apiKey: "AIzaSyATDliRdiFq5NV5ydQ7ogI8MrQaUs538yk",
+  authDomain: "jurisdiccion-management.firebaseapp.com",
+  projectId: "jurisdiccion-management",
+  storageBucket: "jurisdiccion-management.firebasestorage.app",
+  messagingSenderId: "77385574453",
+  appId: "1:77385574453:web:2ff65dc254bd303afc297c",
+  measurementId: "G-KSQTB88M7M"
+};
+const cloudCollections = ["portalRegistrations", "portalRequests", "auditLogs", "broadcasts"];
+let cloudDb = null;
+let applyingCloudState = false;
 
 const seedData = {
   residents: [
@@ -228,6 +240,50 @@ function loadData() {
 
 function saveData() {
   localStorage.setItem(storageKey, JSON.stringify(data));
+  if (!applyingCloudState) pushDataToCloud();
+}
+
+function initCloudSync() {
+  if (!window.firebase?.initializeApp || !window.firebase?.firestore) return;
+  try {
+    if (!firebase.apps.length) firebase.initializeApp(firebaseConfig);
+    cloudDb = firebase.firestore();
+    const localStartupData = cloudCollections.reduce((items, name) => {
+      items[name] = [...(data[name] || [])];
+      return items;
+    }, {});
+    cloudCollections.forEach((name) => {
+      cloudDb.collection(name).onSnapshot((snapshot) => {
+        if (snapshot.empty && localStartupData[name]?.length) {
+          localStartupData[name].forEach((item, index) => {
+            const id = String(item.id || `${Date.now()}-${index}`);
+            cloudDb.collection(name).doc(id).set(item, { merge: true });
+          });
+          return;
+        }
+        applyingCloudState = true;
+        data[name] = snapshot.docs.map((doc) => ({ id: Number(doc.id) || doc.id, ...doc.data() }));
+        data[name].sort((a, b) => (Number(b.id) || 0) - (Number(a.id) || 0));
+        localStorage.setItem(storageKey, JSON.stringify(data));
+        applyingCloudState = false;
+        renderAll();
+      });
+    });
+  } catch (error) {
+    console.warn("Firebase sync unavailable", error);
+  }
+}
+
+function pushDataToCloud() {
+  if (!cloudDb) return;
+  cloudCollections.forEach((name) => {
+    (data[name] || []).forEach((item, index) => {
+      const id = String(item.id || `${Date.now()}-${index}`);
+      cloudDb.collection(name).doc(id).set(item, { merge: true }).catch((error) => {
+        console.warn(`Could not sync ${name}`, error);
+      });
+    });
+  });
 }
 
 function addAuditLog(action, actor = loggedInUser || "admin", source = "Management System", details = "") {
@@ -1588,3 +1644,4 @@ window.addEventListener("storage", (event) => {
 window.addEventListener("focus", syncDataFromStorage);
 
 renderAll();
+initCloudSync();
