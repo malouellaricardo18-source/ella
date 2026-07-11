@@ -666,6 +666,7 @@
                 </div>
                 <img src="gcash-qr.jpg" alt="Barangay GCash QR code" />
               </div>
+              <p class="message" id="requestMessage"></p>
               <button class="button" type="submit">Proceed to Confirm and Request</button>
             </form>
           </section>
@@ -725,6 +726,7 @@
       const requestFee = document.querySelector("#requestFee");
       const feeNote = document.querySelector("#feeNote");
       const gcashPanel = document.querySelector("#gcashPanel");
+      const requestMessage = document.querySelector("#requestMessage");
 
       const documentFees = {
         "Barangay Clearance": 75,
@@ -806,10 +808,24 @@
       }
 
       function saveCloudRecord(name, item) {
-        if (!cloudDb || !item) return;
+        if (!item) return;
         const id = cloudSafeId(item.id || Date.now());
-        cloudDb.ref(`${name}/${id}`).set(item).catch((error) => {
+        if (!cloudDb) {
+          return fetch(`${firebaseConfig.databaseURL}/${name}/${id}.json`, {
+            method: "PUT",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify(item)
+          }).then((response) => {
+            if (!response.ok) throw new Error(`Firebase REST ${response.status}`);
+            return true;
+          }).catch((error) => {
+            console.warn(`Could not sync ${name}`, error);
+            return false;
+          });
+        }
+        return cloudDb.ref(`${name}/${id}`).set(item).then(() => true).catch((error) => {
           console.warn(`Could not sync ${name}`, error);
+          return false;
         });
       }
 
@@ -892,10 +908,18 @@
       function normalizeBirthdate(value) {
         const raw = String(value || "").trim();
         if (/^\d{4}-\d{2}-\d{2}$/.test(raw)) return raw;
+        if (/^\d{8}$/.test(raw)) return `${raw.slice(4)}-${raw.slice(0, 2)}-${raw.slice(2, 4)}`;
         const match = raw.match(/^(\d{1,2})[/-](\d{1,2})[/-](\d{4})$/);
         if (!match) return "";
         const [, month, day, year] = match;
         return `${year}-${month.padStart(2, "0")}-${day.padStart(2, "0")}`;
+      }
+
+      function formatBirthdateInput(input) {
+        const digits = input.value.replace(/\D/g, "").slice(0, 8);
+        if (digits.length <= 2) input.value = digits;
+        else if (digits.length <= 4) input.value = `${digits.slice(0, 2)}/${digits.slice(2)}`;
+        else input.value = `${digits.slice(0, 2)}/${digits.slice(2, 4)}/${digits.slice(4)}`;
       }
 
       function fullName(item) {
@@ -1148,6 +1172,7 @@
         switchAuth("signin");
       });
       birthdate.addEventListener("input", () => {
+        formatBirthdateInput(birthdate);
         age.value = birthdate.value ? ageFromBirthdate(birthdate.value) : "";
       });
       registerForm.addEventListener("submit", (event) => {
@@ -1176,6 +1201,7 @@
       paymentMethod.addEventListener("change", updatePaymentSummary);
       document.querySelector("#documentRequestForm").addEventListener("submit", (event) => {
         event.preventDefault();
+        requestMessage.textContent = "Sending request...";
         const values = Object.fromEntries(new FormData(event.currentTarget).entries());
         const requestedDocument = values.documentType === "Others" ? `Others: ${values.otherDocumentType.trim()}` : values.documentType;
         const fee = calculateDocumentFee(values.documentType);
@@ -1196,11 +1222,15 @@
         addAuditLog("Document request submitted", fullName(currentUser), "Citizen Portal", `${requestedDocument} · ${formatFee(fee.amount)} · ${values.paymentMethod}`);
         state.activity = state.activity.slice(0, 5);
         saveState();
-        saveCloudRecord("portalRequests", request);
-        event.currentTarget.reset();
-        updatePaymentSummary();
-        renderPortal();
-        setPortalView("requests");
+        saveCloudRecord("portalRequests", request).then((sentOnline) => {
+          requestMessage.textContent = sentOnline
+            ? "Request sent to the barangay. Please wait for approval."
+            : "Request saved on this phone, but online sending failed. Please check internet or Firebase rules.";
+          event.currentTarget.reset();
+          updatePaymentSummary();
+          renderPortal();
+          setPortalView("requests");
+        });
       });
       document.querySelector("#signOutBtn").addEventListener("click", () => {
         addAuditLog("Citizen signed out", fullName(currentUser), "Citizen Portal", currentUser.email);

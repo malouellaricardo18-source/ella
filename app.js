@@ -322,7 +322,7 @@ function syncDataFromStorage() {
 
 function syncDataFromCloud() {
   if (!cloudDb) {
-    syncDataFromStorage();
+    syncDataFromCloudRest();
     return;
   }
   Promise.all(cloudCollections.map((name) => cloudDb.ref(name).get().then((snapshot) => {
@@ -335,6 +335,21 @@ function syncDataFromCloud() {
     console.warn("Could not refresh Firebase data", error);
     syncDataFromStorage();
   });
+}
+
+function syncDataFromCloudRest() {
+  Promise.all(cloudCollections.map((name) => fetch(`${firebaseConfig.databaseURL}/${name}.json`)
+    .then((response) => response.ok ? response.json() : null)
+    .then((items) => {
+      data[name] = cloudMapToArray(items);
+      data[name].sort((a, b) => (Number(b.id) || 0) - (Number(a.id) || 0));
+    }))).then(() => {
+      localStorage.setItem(storageKey, JSON.stringify(data));
+      renderAll();
+    }).catch((error) => {
+      console.warn("Could not refresh Firebase REST data", error);
+      syncDataFromStorage();
+    });
 }
 
 function ageFromBirthdate(birthdate) {
@@ -350,10 +365,18 @@ function ageFromBirthdate(birthdate) {
 function normalizeBirthdate(value) {
   const raw = String(value || "").trim();
   if (/^\d{4}-\d{2}-\d{2}$/.test(raw)) return raw;
+  if (/^\d{8}$/.test(raw)) return `${raw.slice(4)}-${raw.slice(0, 2)}-${raw.slice(2, 4)}`;
   const match = raw.match(/^(\d{1,2})[/-](\d{1,2})[/-](\d{4})$/);
   if (!match) return "";
   const [, month, day, year] = match;
   return `${year}-${month.padStart(2, "0")}-${day.padStart(2, "0")}`;
+}
+
+function formatBirthdateInput(input) {
+  const digits = input.value.replace(/\D/g, "").slice(0, 8);
+  if (digits.length <= 2) input.value = digits;
+  else if (digits.length <= 4) input.value = `${digits.slice(0, 2)}/${digits.slice(2)}`;
+  else input.value = `${digits.slice(0, 2)}/${digits.slice(2, 4)}/${digits.slice(4)}`;
 }
 
 function fullName(resident) {
@@ -1638,6 +1661,7 @@ citizenRequestForm.addEventListener("submit", (event) => {
 });
 citizenRequestForm.querySelector("[name='documentType']").addEventListener("change", updateAdminOtherDocumentField);
 portalBirthdate.addEventListener("input", () => {
+  formatBirthdateInput(portalBirthdate);
   portalAge.value = portalBirthdate.value ? ageFromBirthdate(portalBirthdate.value) : "";
 });
 document.querySelector("#clearBroadcastForm").addEventListener("click", () => broadcastForm.reset());
