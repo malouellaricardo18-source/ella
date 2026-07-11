@@ -320,6 +320,23 @@ function syncDataFromStorage() {
   renderAll();
 }
 
+function syncDataFromCloud() {
+  if (!cloudDb) {
+    syncDataFromStorage();
+    return;
+  }
+  Promise.all(cloudCollections.map((name) => cloudDb.ref(name).get().then((snapshot) => {
+    data[name] = cloudMapToArray(snapshot.val());
+    data[name].sort((a, b) => (Number(b.id) || 0) - (Number(a.id) || 0));
+  }))).then(() => {
+    localStorage.setItem(storageKey, JSON.stringify(data));
+    renderAll();
+  }).catch((error) => {
+    console.warn("Could not refresh Firebase data", error);
+    syncDataFromStorage();
+  });
+}
+
 function ageFromBirthdate(birthdate) {
   const normalized = normalizeBirthdate(birthdate);
   const date = new Date(`${normalized}T00:00:00`);
@@ -1706,13 +1723,13 @@ document.querySelector("#householdSearch").addEventListener("input", renderHouse
 document.querySelector("#caseSearch").addEventListener("input", renderCases);
 document.querySelector("#printBtn").addEventListener("click", () => window.print());
 document.querySelector("#exportBtn").addEventListener("click", exportCsv);
-document.querySelector("#refreshPortalQueue").addEventListener("click", syncDataFromStorage);
-document.querySelector("#refreshPortalRequests").addEventListener("click", syncDataFromStorage);
-document.querySelector("#refreshAuditLogs").addEventListener("click", syncDataFromStorage);
+document.querySelector("#refreshPortalQueue").addEventListener("click", syncDataFromCloud);
+document.querySelector("#refreshPortalRequests").addEventListener("click", syncDataFromCloud);
+document.querySelector("#refreshAuditLogs").addEventListener("click", syncDataFromCloud);
 window.addEventListener("storage", (event) => {
   if (event.key === storageKey) syncDataFromStorage();
 });
-window.addEventListener("focus", syncDataFromStorage);
+window.addEventListener("focus", syncDataFromCloud);
 
 renderAll();
 initCloudSync();

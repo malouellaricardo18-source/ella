@@ -805,6 +805,14 @@
         });
       }
 
+      function saveCloudRecord(name, item) {
+        if (!cloudDb || !item) return;
+        const id = cloudSafeId(item.id || Date.now());
+        cloudDb.ref(`${name}/${id}`).set(item).catch((error) => {
+          console.warn(`Could not sync ${name}`, error);
+        });
+      }
+
       function cloudSafeId(value) {
         return String(value).replace(/[.#$/\[\]]/g, "-");
       }
@@ -1171,7 +1179,7 @@
         const values = Object.fromEntries(new FormData(event.currentTarget).entries());
         const requestedDocument = values.documentType === "Others" ? `Others: ${values.otherDocumentType.trim()}` : values.documentType;
         const fee = calculateDocumentFee(values.documentType);
-        state.portalRequests.unshift({
+        const request = {
           id: Date.now(),
           name: fullName(currentUser),
           email: currentUser.email,
@@ -1182,11 +1190,13 @@
           feeLabel: formatFee(fee.amount),
           status: "Submitted",
           submittedAt: new Date().toLocaleDateString()
-        });
+        };
+        state.portalRequests.unshift(request);
         state.activity.unshift(`${fullName(currentUser)} requested ${requestedDocument} through Citizen Portal.`);
         addAuditLog("Document request submitted", fullName(currentUser), "Citizen Portal", `${requestedDocument} · ${formatFee(fee.amount)} · ${values.paymentMethod}`);
         state.activity = state.activity.slice(0, 5);
         saveState();
+        saveCloudRecord("portalRequests", request);
         event.currentTarget.reset();
         updatePaymentSummary();
         renderPortal();
