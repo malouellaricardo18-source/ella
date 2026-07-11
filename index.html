@@ -320,7 +320,7 @@
             <fieldset>
               <legend>Personal information</legend>
               <div class="form-grid">
-                <label>Birthdate <input id="portalBirthdate" name="birthdate" type="date" required /></label>
+                <label>Birthdate <input id="portalBirthdate" name="birthdate" type="text" inputmode="numeric" placeholder="MM/DD/YYYY" required /></label>
                 <label>Age <input id="portalAge" readonly placeholder="Auto-calculated" /></label>
                 <label>Sex
                   <select name="sex" required>
@@ -515,7 +515,7 @@
           <label>First name <input name="firstName" required /></label>
           <label>Middle name <input name="middleName" /></label>
           <label>Last name <input name="lastName" required /></label>
-          <label>Birthdate <input name="birthdate" type="date" required /></label>
+          <label>Birthdate <input name="birthdate" type="text" inputmode="numeric" placeholder="MM/DD/YYYY" required /></label>
           <label>Civil status
             <select name="civilStatus">
               <option>Single</option>
@@ -608,6 +608,6 @@
 
     <script src="https://www.gstatic.com/firebasejs/10.12.5/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/10.12.5/firebase-database-compat.js"></script>
-    <script src="app.js?v=4"></script>
+    <script src="app.js?v=6"></script>
   </body>
 </html>

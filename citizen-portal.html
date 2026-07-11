@@ -506,7 +506,7 @@
           <fieldset>
             <legend>Personal information</legend>
             <div class="form-grid">
-              <label>Birthdate * <input id="birthdate" name="birthdate" type="date" required /></label>
+              <label>Birthdate * <input id="birthdate" name="birthdate" type="text" inputmode="numeric" placeholder="MM/DD/YYYY" required /></label>
               <label>Age <input id="age" readonly placeholder="Auto-calculated" /></label>
               <label>Sex * <select name="sex" required><option value="">Select sex</option><option>Female</option><option>Male</option></select></label>
               <label>Civil status * <select name="civilStatus" required><option>Single</option><option>Married</option><option>Widowed</option><option>Separated</option></select></label>
@@ -796,15 +796,22 @@
       function pushStateToCloud() {
         if (!cloudDb) return;
         cloudCollections.forEach((name) => {
-          cloudDb.ref(name).set(arrayToCloudMap(state[name] || [])).catch((error) => {
-            console.warn(`Could not sync ${name}`, error);
+          (state[name] || []).forEach((item, index) => {
+            const id = cloudSafeId(item.id || `${Date.now()}-${index}`);
+            cloudDb.ref(`${name}/${id}`).set(item).catch((error) => {
+              console.warn(`Could not sync ${name}`, error);
+            });
           });
         });
       }
 
+      function cloudSafeId(value) {
+        return String(value).replace(/[.#$/\[\]]/g, "-");
+      }
+
       function arrayToCloudMap(items) {
         return items.reduce((map, item, index) => {
-          const id = String(item.id || `${Date.now()}-${index}`).replace(/[.#$/\[\]]/g, "-");
+          const id = cloudSafeId(item.id || `${Date.now()}-${index}`);
           map[id] = item;
           return map;
         }, {});
@@ -865,11 +872,22 @@
       }
 
       function ageFromBirthdate(value) {
-        const date = new Date(`${value}T00:00:00`);
+        const normalized = normalizeBirthdate(value);
+        const date = new Date(`${normalized}T00:00:00`);
+        if (!normalized || Number.isNaN(date.getTime())) return "";
         let years = today.getFullYear() - date.getFullYear();
         const monthDelta = today.getMonth() - date.getMonth();
         if (monthDelta < 0 || (monthDelta === 0 && today.getDate() < date.getDate())) years -= 1;
         return years;
+      }
+
+      function normalizeBirthdate(value) {
+        const raw = String(value || "").trim();
+        if (/^\d{4}-\d{2}-\d{2}$/.test(raw)) return raw;
+        const match = raw.match(/^(\d{1,2})[/-](\d{1,2})[/-](\d{4})$/);
+        if (!match) return "";
+        const [, month, day, year] = match;
+        return `${year}-${month.padStart(2, "0")}-${day.padStart(2, "0")}`;
       }
 
       function fullName(item) {
@@ -943,7 +961,7 @@
           email: values.email,
           contact: values.contact,
           password: values.password,
-          birthdate: values.birthdate,
+          birthdate: normalizeBirthdate(values.birthdate) || values.birthdate,
           age: ageFromBirthdate(values.birthdate),
           sex: values.sex,
           civilStatus: values.civilStatus,

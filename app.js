@@ -277,15 +277,22 @@ function initCloudSync() {
 function pushDataToCloud() {
   if (!cloudDb) return;
   cloudCollections.forEach((name) => {
-    cloudDb.ref(name).set(arrayToCloudMap(data[name] || [])).catch((error) => {
-      console.warn(`Could not sync ${name}`, error);
+    (data[name] || []).forEach((item, index) => {
+      const id = cloudSafeId(item.id || `${Date.now()}-${index}`);
+      cloudDb.ref(`${name}/${id}`).set(item).catch((error) => {
+        console.warn(`Could not sync ${name}`, error);
+      });
     });
   });
 }
 
+function cloudSafeId(value) {
+  return String(value).replace(/[.#$/\[\]]/g, "-");
+}
+
 function arrayToCloudMap(items) {
   return items.reduce((map, item, index) => {
-    const id = String(item.id || `${Date.now()}-${index}`).replace(/[.#$/\[\]]/g, "-");
+    const id = cloudSafeId(item.id || `${Date.now()}-${index}`);
     map[id] = item;
     return map;
   }, {});
@@ -314,11 +321,22 @@ function syncDataFromStorage() {
 }
 
 function ageFromBirthdate(birthdate) {
-  const date = new Date(`${birthdate}T00:00:00`);
+  const normalized = normalizeBirthdate(birthdate);
+  const date = new Date(`${normalized}T00:00:00`);
+  if (!normalized || Number.isNaN(date.getTime())) return "";
   let age = today.getFullYear() - date.getFullYear();
   const monthDelta = today.getMonth() - date.getMonth();
   if (monthDelta < 0 || (monthDelta === 0 && today.getDate() < date.getDate())) age -= 1;
   return age;
+}
+
+function normalizeBirthdate(value) {
+  const raw = String(value || "").trim();
+  if (/^\d{4}-\d{2}-\d{2}$/.test(raw)) return raw;
+  const match = raw.match(/^(\d{1,2})[/-](\d{1,2})[/-](\d{4})$/);
+  if (!match) return "";
+  const [, month, day, year] = match;
+  return `${year}-${month.padStart(2, "0")}-${day.padStart(2, "0")}`;
 }
 
 function fullName(resident) {
@@ -1109,7 +1127,7 @@ function saveResidentRecord(form) {
     id: existingId || Date.now(),
     firstName: values.firstName,
     lastName: values.lastName,
-    birthdate: values.birthdate,
+    birthdate: normalizeBirthdate(values.birthdate) || values.birthdate,
     civilStatus: values.civilStatus,
     address: values.address,
     purok: values.purok,
@@ -1369,7 +1387,7 @@ async function savePortalRegistration(form) {
     lastName: values.lastName,
     email: values.email,
     contact: values.contact,
-    birthdate: values.birthdate,
+    birthdate: normalizeBirthdate(values.birthdate) || values.birthdate,
     age: ageFromBirthdate(values.birthdate),
     sex: values.sex,
     civilStatus: values.civilStatus,
